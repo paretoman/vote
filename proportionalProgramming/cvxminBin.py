@@ -2,11 +2,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 # from scipy.spatial.distance import cdist
-import pulp
 from matplotlib import collections as mc
 import cvxpy as cvx
 
 # %% Geometry Definition
+
 # test cases
 # index, selected, facilities, customers
 #         n se fa cu
@@ -15,22 +15,22 @@ cases = [(0, 4, 5, 3),
          (2, 4, 3, 5),
          (3, 2, 3, 5),
          (4, 3, 3, 5),
-         (5, 9, 7, 3), # nice
+         (5, 9, 7, 3), 
          (6, 16, 9, 3),
          (7, 16, 11, 3),
          (8, 16, 8, 3),
          (9, 16, 8, 4),
          (10, 9, 9, 4),
          (11, 4, 11, 3),
-         (12, 12, 9, 4), # cool
+         (12, 12, 9, 4), 
          (13, 8, 9, 4),
-         (14, 8, 11, 6), # now possible
+         (14, 8, 11, 6), 
          (15, 8, 9, 6), 
-         (16, 5, 5, 3), # good
-         (17, 5, 9, 6),
+         (16, 5, 5, 3), # ok
+         (17, 5, 9, 6), # did not wait around for this 
          ]
 
-selectTest = 17
+selectTest = 16
 (_,ts,tf,tc) = cases[selectTest]
 
 num_selected = ts
@@ -69,74 +69,50 @@ for i in range(num_customers):
     for j in range(num_facilities): 
         distances[i,j] = np.sum((customers[i] - facilities[j])**2)
 
-# %% Problem Definition
+# %% Define Optimization Problem
 
-# Define the variables
-a = cvx.Variable(num_customers)
+# Data
+b = np.zeros((num_customers,num_facilities,num_facilities))
+for j in range(num_facilities):
+    b[:,j,:] = distances[:,[j]] <= distances
+q = num_customers / num_selected
+
+# Variables Definition
+a = cvx.Variable((num_customers,num_facilities))
+x = cvx.Variable((num_facilities),integer=True)
 min_score = cvx.Variable()
 
-
-# Parameters
-u = cvx.Parameter(num_customers, nonneg=True)
-b = cvx.Parameter((num_customers,num_facilities), nonneg=True)
-
 # Objective
-obj = cvx.Maximize(cvx.min(a @ b))
-# use an extra term to spread support
-# obj = cvx.Maximize(cvx.min(a @ b) + .1 * (cvx.sum(a) - cvx.sum(a**2)))
+obj = cvx.Maximize(min_score)
+constraints = []
+for j in range(num_facilities):
+    score = a[:,j].T @ b[:,j,:] # j's scores
+    constraints += [ min_score <= cvx.min(score) + (1-x[j]) * q]
 
-# Constraints
-constraints = [
-    0 <= a,
-    a <= 1 - u,
-    cvx.sum(a) == num_customers / num_selected
+constraints += [
+    # bounds
+    a >= 0,
+    a <= 1,
+    x >= 0,
+    x <= 1,
+    cvx.sum(x) == num_selected,
+
+    # Each customer must be completely assigned
+    cvx.sum(a, axis=1) == 1,
+    # Customers may only be assigned to selected facilities
+    cvx.mean(a,axis=0) <= x,
 ]
 
 prob = cvx.Problem(obj,constraints)
-
-# %% Solve Problem
-
-# keep track of satisfied customersa and chosen facilities
-used = np.zeros(num_customers)
-facilities_remaining = list(np.arange(num_facilities)) # 0 to n-1
-winners = []
-winnerScores = []
-assignment = np.zeros((num_customers,num_facilities))
-
-for round_count in range(num_selected):
-    scores = np.zeros(num_facilities)
-    ayes = np.zeros((num_customers,num_facilities))
-    u.value = used
-    for j in facilities_remaining:
-        prefs = distances[:,[j]] <= distances
-        b.value = prefs * 1
-        prob.solve()
-        if (prob.status != "optimal"):
-            print(prob.status)
-        scores[j] = prob.value
-        ayes[:,j] = a.value
-    
-    # compare all scores and find the index of the largest
-    largest_of_remaining = np.argmax(scores[facilities_remaining])
-    winner = facilities_remaining[largest_of_remaining]
-    del facilities_remaining[largest_of_remaining]
-    
-    # store the facility in a list of winners
-    winners.append(winner)
-    winnerScores.append(scores[winner])
-    assignment[:,winner] = ayes[:,winner]
-    used = used + assignment[:,winner]
-    used = np.minimum(used,1)
-    
-    max_possible = num_customers / num_selected
-    best = 100 * scores[winner] / max_possible
-    print(winner, round(scores[winner],6),f"{round(best,1)} %")
-
+prob.solve()
+print(f"Status: {prob.status}")
+print(f"Optimal minimum score: {prob.value}")
+winners = [idx for idx, v in enumerate(x.value) if v]
+assignment = np.round(a.value, 6)
 
 # %% Output
 
-
-# Plot results 
+# %% Plot results 
 n_winners = len(winners) 
 npl = n_winners+4 
 
@@ -152,6 +128,13 @@ plt.scatter(facilities[:,0], facilities[:,1],
 plt.scatter(facilities[winners,0], facilities[winners,1],
     color='red', s = 100, marker='*', label="Facilities")
 
+# Plot customer assignments with different colors 
+# colors = plt.cm.rainbow(np.linspace(0,1,num_facilities))
+# for i in range(num_facilities): 
+#     mask = assignments == i
+#     plt.scatter(np.array(customer_x)[mask], np.array(customer_y)[mask], 
+#         color=colors[i], s=100, alpha=0.5, label=f' Facility {i} customers')
+    
 plt.scatter(np.array(customer_x), np.array(customer_y), 
         color='grey', s=100, alpha=0.5, label=f' Facility {i} customers')
 
@@ -177,6 +160,11 @@ alphas = np.round(alphas,2)
 lc = mc.LineCollection(lines, alpha=alphas) 
 ax.add_collection(lc) 
 
+# assigners = np.zeros((num_customers,num_facilities) ) 
+# for i in range(num_customers): 
+#     for j in range(num_facilities): 
+#         assigners[i,j] = pulp.value(a[i,j])
+
 # check constraints 
 plt.subplot(1, npl, 2, xticks=[], yticks=[]) 
 plt.imshow(np.sum(assignment,axis=0).reshape(side_n_facilities,side_n_facilities))
@@ -196,7 +184,7 @@ for i in range(n_winners):
     plt.title(f"F {winner}")
 
 max_possible = num_customers / num_selected
-best = 100 * min(winnerScores) / max_possible
+best = 100 * prob.value / max_possible
 print(f"{round(best,1)} %")
 
 plt.show()
