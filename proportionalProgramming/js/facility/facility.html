@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Facility Selection of Customers</title>
+  <style>
+    body {
+      margin: 0;
+    }
+
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="myCanvas"></canvas>
+
+  <p>assignment of customers to you</p>
+
+  <label for="options">Choose an solver:</label>
+  <select id="options">
+    <option value="SCS" selected>SCS</option>
+    <option value="Highs">Highs</option>
+    <option value="GLPK">GLPK</option>
+    <option value="Javascript LP Solver">Javascript LP Solver</option>
+  </select>
+
+  <p id="output">Click inside the arena.</p>
+
+  <!-- <script src="https://cdn.jsdelivr.net/npm/highs/build/highs.js"></script> -->
+  <script type="module" src="facility.js"></script>
+
+</body>
+
+</html>

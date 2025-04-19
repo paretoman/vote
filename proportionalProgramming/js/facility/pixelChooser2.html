@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Pixel Preference Visualization</title>
+<style>
+  body { margin: 0; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="myCanvas"></canvas>
+
+<p>preference for 0th customer</p>
+<script type="module">
+  const canvas = document.getElementById('myCanvas');
+  const ctx = canvas.getContext('2d');
+  const numOnSide = 15; // Adjust the grid size
+  const pixelSize = 10; // Size of each pixel on the canvas
+  canvas.width = numOnSide * pixelSize;
+  canvas.height = numOnSide * pixelSize;
+
+  import { calculatePreferences2 } from "./calculatePreferences2.js"
+
+  const preferences = calculatePreferences2(numOnSide);
+
+  // Function to draw the grid based on preferences against a point
+  function drawGrid(refPointX, refPointY) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const me = refPointY * numOnSide + refPointX
+    const numPoints = numOnSide * numOnSide
+    const middle = Math.floor(numPoints / 2)
+    for (let i = 0; i < numPoints; i++) {
+      const row = Math.floor(i / numOnSide);
+      const col = i % numOnSide;
+      // let pref = preferences[middle][me][i]
+      let pref = preferences[me][middle][i] // customer chose middle over me
+      if (pref === 1) {
+        ctx.fillRect(col * pixelSize, row * pixelSize, pixelSize, pixelSize);
+      }
+    }
+  }
+
+
+  // Event listeners for mouse interaction
+  canvas.addEventListener('mousedown', handleMouseDown);
+  canvas.addEventListener('mousemove', handleMouseMove);
+  canvas.addEventListener('mouseup', handleMouseUp);
+
+  let isDragging = false;
+
+  function handleMouseDown(event) {
+    isDragging = true;
+    updateGrid(event);
+  }
+
+  function handleMouseMove(event) {
+    if (isDragging) {
+      updateGrid(event);
+    }
+  }
+
+  function handleMouseUp() {
+    isDragging = false;
+  }
+
+  function updateGrid(event) {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = Math.floor((event.clientX - rect.left) / pixelSize);
+    const mouseY = Math.floor((event.clientY - rect.top) / pixelSize);
+    drawGrid(mouseX, mouseY);
+  }
+</script>
+
+</body>
+</html>
