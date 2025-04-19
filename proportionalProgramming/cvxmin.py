@@ -6,7 +6,8 @@ import pulp
 from matplotlib import collections as mc
 import cvxpy as cvx
 
-# %% Geometry Definition
+# 
+# Geometry Definition
 # test cases
 # index, selected, facilities, customers
 #         n se fa cu
@@ -28,9 +29,11 @@ cases = [(0, 4, 5, 3),
          (15, 8, 9, 6), 
          (16, 5, 5, 3), # good
          (17, 5, 9, 6),
+         (18, 8, 9, 9),
+         (19, 2, 9, 9), # shape
          ]
 
-selectTest = 17
+selectTest = 19
 (_,ts,tf,tc) = cases[selectTest]
 
 num_selected = ts
@@ -69,7 +72,7 @@ for i in range(num_customers):
     for j in range(num_facilities): 
         distances[i,j] = np.sum((customers[i] - facilities[j])**2)
 
-# %% Problem Definition
+# Problem Definition
 
 # Define the variables
 a = cvx.Variable(num_customers)
@@ -81,7 +84,8 @@ u = cvx.Parameter(num_customers, nonneg=True)
 b = cvx.Parameter((num_customers,num_facilities), nonneg=True)
 
 # Objective
-obj = cvx.Maximize(cvx.min(a @ b))
+# obj = cvx.Minimize(cvx.norm2(a @ (1-b)))
+obj = cvx.Minimize(cvx.log_sum_exp(.1 * a @ (1-b)))
 # use an extra term to spread support
 # obj = cvx.Maximize(cvx.min(a @ b) + .1 * (cvx.sum(a) - cvx.sum(a**2)))
 
@@ -91,10 +95,13 @@ constraints = [
     a <= 1 - u,
     cvx.sum(a) == num_customers / num_selected
 ]
+constraints_final = [
+    a == 1 - u
+]
 
 prob = cvx.Problem(obj,constraints)
 
-# %% Solve Problem
+# Solve Problem
 
 # keep track of satisfied customersa and chosen facilities
 used = np.zeros(num_customers)
@@ -107,6 +114,8 @@ for round_count in range(num_selected):
     scores = np.zeros(num_facilities)
     ayes = np.zeros((num_customers,num_facilities))
     u.value = used
+    if round_count == num_selected - 1: # final round
+        prob = cvx.Problem(obj,constraints_final)
     for j in facilities_remaining:
         prefs = distances[:,[j]] <= distances
         b.value = prefs * 1
@@ -117,7 +126,7 @@ for round_count in range(num_selected):
         ayes[:,j] = a.value
     
     # compare all scores and find the index of the largest
-    largest_of_remaining = np.argmax(scores[facilities_remaining])
+    largest_of_remaining = np.argmin(scores[facilities_remaining])
     winner = facilities_remaining[largest_of_remaining]
     del facilities_remaining[largest_of_remaining]
     
@@ -127,13 +136,14 @@ for round_count in range(num_selected):
     assignment[:,winner] = ayes[:,winner]
     used = used + assignment[:,winner]
     used = np.minimum(used,1)
+    used = np.maximum(used,0)
     
     max_possible = num_customers / num_selected
     best = 100 * scores[winner] / max_possible
     print(winner, round(scores[winner],6),f"{round(best,1)} %")
 
 
-# %% Output
+# Output
 
 
 # Plot results 
@@ -202,3 +212,4 @@ print(f"{round(best,1)} %")
 plt.show()
 
 print("done")
+# %%
