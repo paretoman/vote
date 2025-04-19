@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "npm run copy && vite",
-    "copy": "copyfiles --flat node_modules/highs/build/highs.wasm facility",
+    "dev": "vite",
+    "prepare": "copyfiles --flat node_modules/highs/build/highs.wasm facility",
     "build": "vite build",
     "preview": "vite preview"
   },
