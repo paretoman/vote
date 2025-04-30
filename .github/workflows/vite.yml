@@ -62,7 +62,7 @@ jobs:
       - name: Build
         env:
           PREFIX_PATHS: 'true'
-        run: npm run build
+        run: npm run build --base=/vote/
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
