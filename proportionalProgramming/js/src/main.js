@@ -20,8 +20,8 @@ document.querySelector('#app').innerHTML = `
     </p>
     <p>
       <ul>
-        <li><a href="../facility/facility.html">Facility Customer Chooser</a></li>
-        <li><a href="../facility/pixelChooser2.html">Pixel Chooser</a></li>
+        <li><a href="./src/facility/facility.html">Facility Customer Chooser</a></li>
+        <li><a href="./src/facility/pixelChooser2.html">Pixel Chooser</a></li>
       </ul>
     </p>
   </div>

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prepare": "copyfiles --flat node_modules/highs/build/highs.wasm facility",
+    "prepare": "copyfiles --flat node_modules/highs/build/highs.wasm src/facility",
     "build": "vite build",
     "preview": "vite preview"
   },
