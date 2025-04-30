@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./proportionalProgramming
+        working-directory: ./proportionalProgramming/js
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -51,9 +51,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            js/dist
+            dist
             .cache
-          key: ${{ runner.os }}-vite-build-${{ hashFiles('js/dist') }}
+          key: ${{ runner.os }}-vite-build-${{ hashFiles('dist') }}
           restore-keys: |
             ${{ runner.os }}-vite-build-
       - name: Install dependencies
@@ -65,7 +65,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./js/dist
+          path: ./dist
 
   # Deployment job
   deploy:
