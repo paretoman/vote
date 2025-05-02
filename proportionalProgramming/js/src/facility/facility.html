@@ -19,15 +19,27 @@
 
   <p>assignment of customers to you</p>
 
-  <label for="options">Choose an solver:</label>
-  <select id="options">
-    <option value="SCS" selected>SCS</option>
-    <option value="Highs">Highs</option>
-    <option value="GLPK">GLPK</option>
-    <option value="Javascript LP Solver">Javascript LP Solver</option>
-  </select>
-
   <p id="output">Click inside the arena.</p>
+
+  <div>
+    <label for="options">Choose a solver:</label>
+    <select id="options">
+      <option value="SCS" selected>SCS</option>
+      <option value="Highs">Highs</option>
+      <option value="GLPK">GLPK</option>
+      <option value="Javascript LP Solver">Javascript LP Solver</option>
+    </select>
+  </div>
+
+  <div>
+    <label for="seats">How many seats?</label>
+    <input id="seats" type="number" value="2">
+  </div>
+
+  <div>
+    <label for="pixels">How many pixels?</label>
+    <input id="pixels" type="number" value="13">
+  </div>
 
   <!-- <script src="https://cdn.jsdelivr.net/npm/highs/build/highs.js"></script> -->
   <script type="module" src="facility.js"></script>
