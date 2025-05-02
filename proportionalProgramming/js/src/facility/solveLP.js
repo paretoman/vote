@@ -4,11 +4,21 @@ import HIGHS from "highs"
 import GLPK from "glpk.js";
 
 // const highs = await Module()
-const highs = await HIGHS()
-const glpk = await GLPK()
+let highs = null
+let glpk = null
 
-// optionally load the solvers
+setup()
+
+async function setup() {
+  highs = await HIGHS()
+  glpk = await GLPK()
+}
+
 export async function solveLP(A,quota, whichSolver) {
+  
+    if (highs == null) return null
+    if (glpk == null) return null
+
     const numRows = A.length;
     const numCols = A[0].length; // Assuming A is a valid matrix
 

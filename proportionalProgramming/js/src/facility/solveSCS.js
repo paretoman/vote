@@ -2,10 +2,16 @@ import createSCS from 'scs-solver';
 // import createSCSData from './createSCSData.js';
 import createSCSData2 from './createSCSData2.js';
 
+let SCS = null
 
-const SCS = await createSCS();
+setup()
+
+async function setup() {
+  SCS = await createSCS();
+}
 
 export function solveSCS(A,quota) {
+    if (SCS == null) return null
     
     const {data,cone} = createSCSData2(A,quota)
 
