@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Ultimate STV Minimax Explorer</title>
+    <style>
+        /* Global Box Sizing for clean mobile padding */
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 15px;
+            background-color: #f0f3f5;
+            color: #2c3e50;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 { margin-top: 0; margin-bottom: 5px; color: #2c3e50; text-align: center; }
+        .subtitle { margin-bottom: 20px; font-size: 1.1rem; color: #7f8c8d; text-align: center;}
+        
+        .intro-box {
+            background-color: #fff;
+            border-left: 5px solid #3498db;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            max-width: 1400px;
+            width: 100%;
+        }
+        .intro-box h2 { margin-top: 0; color: #34495e; }
+        .intro-box .bottom-line { font-size: 1.1rem; font-weight: bold; color: #2980b9; margin-bottom: 15px;}
+
+        .main-layout {
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            width: 100%;
+            max-width: 1400px;
+            height: calc(100vh - 250px);
+            min-height: 600px;
+        }
+
+        /* Settings Panel */
+        .settings-panel {
+            flex: 0 0 300px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+        }
+        .settings-panel h3 { margin: 0 0 10px 0; border-bottom: 2px solid #3498db; padding-bottom: 5px; }
+        .control-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+        .control-group label { font-weight: bold; font-size: 0.9rem; }
+        .control-group select, .control-group input { padding: 8px; border-radius: 4px; border: 1px solid #ccc; width: 100%; }
+        .val-display { float: right; color: #3498db; font-weight: bold; }
+        
+        .btn-run {
+            background: #27ae60; color: white; border: none; padding: 15px; font-size: 1rem;
+            font-weight: bold; border-radius: 5px; cursor: pointer; transition: 0.2s;
+            margin-top: 10px; width: 100%;
+        }
+        .btn-run:hover { background: #219a52; }
+        .btn-run:disabled { background: #95a5a6; cursor: not-allowed; }
+
+        /* Visualization Area */
+        .viz-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-width: 0;
+        }
+        .canvas-container {
+            flex: 1;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            position: relative;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px; /* Base size on mobile */
+        }
+        canvas { 
+            display: block; 
+            max-width: 100%; 
+            max-height: 100%; 
+        }
+        
+        .timeline-container {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .timeline-container label { font-weight: bold; white-space: nowrap; }
+        #timeline { flex: 1; min-width: 150px; cursor: pointer; }
+        #round-display { font-weight: bold; color: #8e44ad; text-align: right; min-width: 80px; }
+
+        /* Right Stats/Log Panel */
+        .info-panel {
+            flex: 0 0 350px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .status-box { background: #f8f9fa; padding: 15px; border-radius: 6px; border-left: 4px solid #3498db; }
+        .status-box p { margin: 5px 0; font-size: 0.95rem; }
+        .log-area {
+            flex: 1;
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-height: 200px;
+        }
+        .log-entry.elected { color: #2ecc71; font-weight: bold; }
+        .log-entry.eliminated { color: #e74c3c; }
+        .log-entry.system { color: #3498db; }
+
+        .legend { display: flex; justify-content: center; gap: 12px; font-size: 0.85rem; padding-top: 10px; flex-wrap: wrap;}
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+        .box { width: 12px; height: 12px; }
+
+        /* --- MOBILE RESPONSIVE LAYOUT --- */
+        @media (max-width: 1000px) {
+            .main-layout {
+                flex-direction: column;
+                height: auto; 
+            }
+            .viz-panel {
+                order: 1; 
+                height: 55vh; 
+            }
+            .settings-panel {
+                order: 2; 
+                flex: none;
+                width: 100%;
+                overflow-y: visible;
+            }
+            .info-panel {
+                order: 3; 
+                flex: none;
+                width: 100%;
+            }
+        }
+
+/*         
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        } */
+        header {
+            text-align: center;
+            padding: 2rem 0;
+            border-bottom: 2px solid #2c3e50;
+            margin-bottom: 2rem;
+        }
+        /* h1 {
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+        } */
+        h2 {
+            color: #34495e;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 0.3rem;
+            margin-top: 2rem;
+        }
+        .bottom-line {
+            background-color: #e8f4f8;
+            border-left: 5px solid #3498db;
+            padding: 15px 20px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 2rem;
+            border-radius: 0 4px 4px 0;
+        }
+        .example-box {
+            background-color: #fff;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .beach-line {
+            display: flex;
+            justify-content: space-between;
+            background-color: #f1c40f;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+            font-weight: bold;
+        }
+        .beach-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1.5rem;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        .winner {
+            background-color: #d5f5e3;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+
+    <header>
+        <h1>STV Minimax: Optimizing Proportional Representation</h1>
+        <p>A smarter way to handle eliminations and avoid vote splitting.</p>
+    </header>
+
+    <main>
+        <div class="bottom-line">
+            Bottom Line: STV Minimax is a great improvement over STV because it has avoided the vote splitting that happens during eliminations.
+        </div>
+
+        <section>
+            <h2>How STV Minimax Works</h2>
+            <p>Traditional Single Transferable Vote (STV) uses <strong>first-preference votes</strong> to determine which candidate gets eliminated in each round. The candidate with the fewest first-choice votes is dropped, and their votes are transferred.</p>
+            <p><strong>STV Minimax</strong> changes this critical elimination step. Instead of only looking at first preferences, it uses <strong>all preferences</strong> to find out how close every candidate is to being a Condorcet winner (a candidate who would beat everyone else in one-on-one matchups). By looking at the pairwise defeats, STV Minimax calculates how many votes a candidate would need to overcome their worst loss. The candidate furthest from being a Condorcet winner—the one who needs the most votes to win their pairwise matchups—is eliminated first.</p>
+        </section>
+
+        <section class="example-box">
+            <h2>The Ice Cream Beach Example</h2>
+            <p>Imagine a straight beach split into 5 evenly spaced zones (Positions 1 through 5). There are 5 voters, one located in each zone. 5 entrepreneurs have set up ice cream stands, perfectly matching the voters' locations. The town needs to grant licenses to <strong>2 ice cream stands</strong>.</p>
+            <p>Naturally, voters prefer the ice cream stand closest to them. If two stands are equidistant, they just flip a coin or pick the one to their left.</p>
+
+            <div class="beach-line">
+                <div class="beach-item"><span class="icon">🧍🍦</span><span>Pos 1<br>(Voter 1 & Stand A)</span></div>
+                <div class="beach-item"><span class="icon">🧍🍦</span><span>Pos 2<br>(Voter 2 & Stand B)</span></div>
+                <div class="beach-item"><span class="icon">🧍🍦</span><span>Pos 3<br>(Voter 3 & Stand C)</span></div>
+                <div class="beach-item"><span class="icon">🧍🍦</span><span>Pos 4<br>(Voter 4 & Stand D)</span></div>
+                <div class="beach-item"><span class="icon">🧍🍦</span><span>Pos 5<br>(Voter 5 & Stand E)</span></div>
+            </div>
+
+            <h3>Applying STV Minimax</h3>
+            <p>Let's look at the Minimax scores. We compare every stand in 1-on-1 matchups to see what their worst loss is (how many votes they fall short of a majority):</p>
+            <ul>
+                <li><strong>Stand C (Center):</strong> Beats everyone 1-on-1. It is the Condorcet winner. (Needs 0 votes).</li>
+                <li><strong>Stands B & D:</strong> Only lose to Stand C by a narrow margin (2 to 3). (Need 1 vote to tie).</li>
+                <li><strong>Stands A & E (Edges):</strong> Lose badly to the middle stands (1 to 4). (Need 3 votes to tie).</li>
+            </ul>
+            <p>Because we use all preferences to measure Condorcet distance, STV Minimax recognizes that the stands on the far edges (A and E) are the furthest from being consensus winners. <strong>Stand A and Stand E are eliminated first.</strong></p>
+            <p>When A and E are eliminated, Voter 1's vote transfers to Stand B, and Voter 5's vote transfers to Stand D. Stands B and D now have 2 votes each—reaching the quota to win!</p>
+            
+            <table>
+                <tr>
+                    <th>Elected Stands</th>
+                    <th>Resulting Coverage</th>
+                </tr>
+                <tr class="winner">
+                    <td>Stand B & Stand D</td>
+                    <td>Perfect spacing! Voter 1 and 2 go to Stand B. Voters 4 and 5 go to Stand D. Voter 3 has a short walk to either. The voters are highly satisfied with nearby options.</td>
+                </tr>
+            </table>
+        </section>
+
+        <section>
+            <h2>Comparison: The Flaw of Regular STV</h2>
+            <p>What happens if we run this exact same scenario using <strong>Regular STV</strong>?</p>
+            <p>In the first round, Regular STV only looks at first preferences. Because there is exactly one voter at each position, the first-round tally looks like this:</p>
+            <ul>
+                <li>Stand A: 1 vote</li>
+                <li>Stand B: 1 vote</li>
+                <li>Stand C: 1 vote</li>
+                <li>Stand D: 1 vote</li>
+                <li>Stand E: 1 vote</li>
+            </ul>
+            <p><strong>It is a 5-way tie for last place.</strong></p>
+            <p>Regular STV has no mathematical way to differentiate their overall popularity, so it must randomly eliminate candidates. It might blindly eliminate Stand B and Stand D first. If that happens, their votes transfer to the edges and the center, and the town might end up electing Stand A (Position 1) and Stand E (Position 5)—forcing the majority of the beach to walk extreme distances to get ice cream.</p>
+            <p>By relying only on first-preference votes, Regular STV falls victim to vote splitting. Because the middle stands share the "moderate" voters' lower preferences, they don't get credit for their central appeal in the first round. STV Minimax solves this gracefully by factoring in the holistic Condorcet distance from the very first elimination.</p>
+        </section>
+    </main>
+
+    <div class="intro-box">
+        <h2>Summary: STV Minimax</h2>
+        <p>Let's review.</p>
+        <div class="bottom-line">Bottom Line: STV Minimax is a great improvement over STV because it avoids the vote splitting that happens during eliminations.</div>
+        <p>Instead of using only first-preference votes to eliminate candidates, STV Minimax uses all preferences upfront. It puts candidates in elimination order by calculating how far they are from being a Condorcet winner (how many votes they fall short in their worst 1-on-1 matchup). </p>
+        <p><strong>The Example:</strong> Imagine voters and candidates (ice cream stands) spread along a beach. Under regular STV, first-round ties often lead to randomly eliminating moderate candidates in the center. STV Minimax instantly identifies that the stands on the extreme edges are furthest from being consensus winners and cleanly prunes them first, ensuring the winners are perfectly spaced so their voters are always nearby.</p>
+        <p>Now, let's explore.</p>
+    </div>
+
+    <div class="main-layout">
+        
+        <!-- SETTINGS -->
+        <div class="settings-panel">
+            <h3>Simulation Parameters</h3>
+            
+            <div class="control-group">
+                <label>Geometry Mode</label>
+                <select id="cfg-geometry" onchange="onGeometryChange()" style="font-weight:bold; background:#eaf2f8;">
+                    <option value="1d">1D Number Line (The Beach)</option>
+                    <option value="2d">2D Grid (The City)</option>
+                    <option value="tree">Bifurcating Tree (The Network)</option>
+                </select>
+            </div>
+
+            <!-- Dynamic Size Input -->
+            <div class="control-group" id="wrap-size">
+                <label><span id="lbl-size">Positions (N)</span> <span id="val-size" class="val-display">121</span></label>
+                <input type="range" id="cfg-size" min="10" max="150" step="1" value="121" oninput="updateSizeLabel()" onchange="triggerCalculation()">
+                <small style="color:#7f8c8d;">Total Nodes: <span id="val-nodes">121</span></small>
+            </div>
+
+            <div class="control-group">
+                <label>Number of Seats <span id="val-seats" class="val-display">5</span></label>
+                <input type="range" id="cfg-seats" min="1" max="25" value="5" oninput="document.getElementById('val-seats').innerText=this.value" onchange="triggerCalculation()">
+            </div>
+
+            <div class="control-group">
+                <label>Voter Demographics</label>
+                <select id="cfg-voters" onchange="triggerCalculation()">
+                    <!-- Populated dynamically -->
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Transfer Method</label>
+                <select id="cfg-transfer" onchange="triggerCalculation()" style="background-color: #fcf3cf;">
+                    <option value="standard">Standard STV</option>
+                    <option value="meek">Meek's Method (Flow-Through)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Quota Rule</label>
+                <select id="cfg-quota" onchange="triggerCalculation()">
+                    <option value="droop">Droop Quota</option>
+                    <option value="hare">Hare Quota</option>
+                </select>
+            </div>
+
+            <button id="btn-run" class="btn-run" onclick="triggerCalculation()">⚡ Force Recalculation</button>
+        </div>
+
+        <!-- VISUALIZATION -->
+        <div class="viz-panel">
+            <div class="canvas-container" id="cvs-wrap">
+                <canvas id="mainCanvas"></canvas>
+                <div class="legend">
+                    <div class="legend-item"><div class="box" style="background: rgba(52,152,219,0.7);"></div> Voter Weight / Density</div>
+                    <div class="legend-item"><div class="dot" style="background: #95a5a6;"></div> Active Candidate</div>
+                    <div class="legend-item"><div class="dot" style="background: #e74c3c;"></div> Eliminated</div>
+                    <div class="legend-item"><div class="dot" style="background: #27ae60;"></div> Elected Winner</div>
+                </div>
+            </div>
+
+            <div class="timeline-container">
+                <label>Time Scrubber:</label>
+                <input type="range" id="timeline" min="0" max="0" value="0" disabled oninput="scrubTime()">
+                <div id="round-display">Round 0</div>
+            </div>
+        </div>
+
+        <!-- LOG & STATS -->
+        <div class="info-panel">
+            <h3>Election Status</h3>
+            <div class="status-box">
+                <p><strong>Total Voters:</strong> <span id="stat-voters">0</span></p>
+                <p><strong>Quota Target:</strong> <span id="stat-quota">0</span></p>
+                <p><strong>Seats Filled:</strong> <span id="stat-seats">0</span> / <span id="stat-maxseats">0</span></p>
+            </div>
+            <div class="log-area" id="log-output">
+                <!-- Logs populated via JS -->
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let electionHistory = []; 
+        let currentMaxWeight = 1.0; 
+        let calcTimeout;
+        
+        // --- UI DYNAMICS ---
+        function onGeometryChange() {
+            const geo = document.getElementById('cfg-geometry').value;
+            const sizeInput = document.getElementById('cfg-size');
+            const lblSize = document.getElementById('lbl-size');
+            const selVoters = document.getElementById('cfg-voters');
+
+            selVoters.innerHTML = '';
+
+            if (geo === '1d') {
+                lblSize.innerText = 'Positions (N)';
+                sizeInput.min = 10; sizeInput.max = 150; sizeInput.step = 1; sizeInput.value = 121;
+                selVoters.innerHTML = `
+                    <option value="uniform">Uniform (Flat Beach)</option>
+                    <option value="center">Center-Heavy (Bell Curve)</option>
+                    <option value="polarized">Polarized (Two Extremes)</option>
+                `;
+            } else if (geo === '2d') {
+                lblSize.innerText = 'Grid Size (WxH)';
+                sizeInput.min = 9; sizeInput.max = 17; sizeInput.step = 2; sizeInput.value = 13;
+                selVoters.innerHTML = `
+                    <option value="uniform">Uniform (Flat Grid)</option>
+                    <option value="urban">Urban Center (Dense Middle)</option>
+                    <option value="suburban">Suburban Ring (Donut)</option>
+                `;
+            } else if (geo === 'tree') {
+                lblSize.innerText = 'Tree Levels';
+                sizeInput.min = 4; sizeInput.max = 7; sizeInput.step = 1; sizeInput.value = 6;
+                selVoters.innerHTML = `
+                    <option value="uniform">Uniform</option>
+                    <option value="root">Root-Heavy (Establishment)</option>
+                    <option value="leaf">Leaf-Heavy (Grassroots)</option>
+                `;
+            }
+            updateSizeLabel();
+            triggerCalculation();
+        }
+
+        function updateSizeLabel() {
+            const geo = document.getElementById('cfg-geometry').value;
+            const v = parseInt(document.getElementById('cfg-size').value);
+            let nodes = 0;
+            if(geo === '1d') {
+                document.getElementById('val-size').innerText = v; nodes = v;
+            } else if (geo === '2d') {
+                document.getElementById('val-size').innerText = `${v}x${v}`; nodes = v * v;
+            } else {
+                document.getElementById('val-size').innerText = v; nodes = Math.pow(2, v) - 1;
+            }
+            document.getElementById('val-nodes').innerText = nodes;
+        }
+
+        function triggerCalculation() {
+            clearTimeout(calcTimeout);
+            const btn = document.getElementById('btn-run');
+            btn.innerText = "⏳ Auto-Calculating...";
+            btn.disabled = true;
+            
+            calcTimeout = setTimeout(() => {
+                calculateEntireElection();
+                btn.innerText = "⚡ Force Recalculation";
+                btn.disabled = false;
+            }, 50);
+        }
+
+        // --- CORE ALGORITHM ---
+        function calculateEntireElection() {
+            const geo = document.getElementById('cfg-geometry').value;
+            const sizeVal = parseInt(document.getElementById('cfg-size').value);
+            const numSeats = parseInt(document.getElementById('cfg-seats').value);
+            const quotaType = document.getElementById('cfg-quota').value;
+            const voterDist = document.getElementById('cfg-voters').value;
+            const transferMethod = document.getElementById('cfg-transfer').value;
+
+            document.getElementById('stat-maxseats').innerText = numSeats;
+
+            let TOTAL = 0;
+            let nodes = [];
+            let distMatrix = [];
+
+            if (geo === '1d') {
+                TOTAL = sizeVal;
+                let center = (TOTAL - 1) / 2;
+                for(let i=0; i<TOTAL; i++) {
+                    let w = 1.0;
+                    if (voterDist === 'center') w = Math.exp(-0.5 * Math.pow((i-center)/(TOTAL/5), 2)) * 2;
+                    else if (voterDist === 'polarized') {
+                        w = (Math.exp(-0.5 * Math.pow((i-TOTAL*0.2)/(TOTAL/8), 2)) + Math.exp(-0.5 * Math.pow((i-TOTAL*0.8)/(TOTAL/8), 2))) * 2;
+                    }
+                    w += 0.1;
+                    nodes.push({id: i, x: i, y: 0, weight: w});
+                }
+            } else if (geo === '2d') {
+                TOTAL = sizeVal * sizeVal;
+                let center = (sizeVal - 1) / 2;
+                for (let i = 0; i < TOTAL; i++) {
+                    let x = i % sizeVal; let y = Math.floor(i / sizeVal);
+                    let w = 1.0;
+                    let dx = x - center; let dy = y - center; let distToC = Math.sqrt(dx*dx + dy*dy);
+                    if (voterDist === 'urban') w = Math.exp(-(distToC*distToC) / (2 * Math.pow(sizeVal/4, 2))) * 4;
+                    else if (voterDist === 'suburban') w = Math.exp(-Math.pow(Math.abs(distToC - sizeVal/3), 2) / 2) * 3;
+                    w += 0.1;
+                    nodes.push({id: i, x: x, y: y, weight: w});
+                }
+            } else if (geo === 'tree') {
+                TOTAL = Math.pow(2, sizeVal) - 1;
+                for(let i=0; i<TOTAL; i++) {
+                    let depth = Math.floor(Math.log2(i + 1));
+                    let w = 1.0;
+                    if (voterDist === 'leaf') w = Math.pow(1.5, depth);
+                    else if (voterDist === 'root') w = Math.pow(1.5, (sizeVal - 1 - depth));
+                    w += 0.1;
+                    nodes.push({id: i, x: 0, y: 0, depth: depth, weight: w}); 
+                }
+            }
+
+            let totalVoters = 0;
+            currentMaxWeight = 0;
+            let initialWeights = new Float32Array(TOTAL);
+            for(let i=0; i<TOTAL; i++) {
+                if(nodes[i].weight > currentMaxWeight) currentMaxWeight = nodes[i].weight;
+                totalVoters += nodes[i].weight;
+                initialWeights[i] = nodes[i].weight;
+                nodes[i].status = 'active';
+            }
+
+            // EXACT FRACTIONAL QUOTA RULE CALCULATIONS (Unrounded Droop & Hare)
+            let quota = quotaType === 'droop' ? (totalVoters / (numSeats + 1)) : totalVoters / numSeats;
+            document.getElementById('stat-voters').innerText = totalVoters.toFixed(2);
+            document.getElementById('stat-quota').innerText = quota.toFixed(4);
+
+            distMatrix = Array(TOTAL).fill(0).map(() => new Float32Array(TOTAL));
+            for(let i=0; i<TOTAL; i++) {
+                for(let j=0; j<TOTAL; j++) {
+                    if (geo === 'tree') {
+                        let u = i, v = j, d = 0;
+                        while(u !== v) { if(u > v) u = Math.floor((u-1)/2); else v = Math.floor((v-1)/2); d++; }
+                        distMatrix[i][j] = d;
+                    } else {
+                        distMatrix[i][j] = Math.sqrt(Math.pow(nodes[i].x - nodes[j].x, 2) + Math.pow(nodes[i].y - nodes[j].y, 2));
+                    }
+                }
+            }
+
+            let preferences = [];
+            for(let i=0; i<TOTAL; i++) {
+                let prefs = [];
+                for(let j=0; j<TOTAL; j++) prefs.push({id: j, dist: distMatrix[i][j]});
+                prefs.sort((a,b) => {
+                    if(a.dist !== b.dist) return a.dist - b.dist;
+                    if (geo === 'tree') return distMatrix[a.id][0] - distMatrix[b.id][0];
+                    let cNode = geo === '1d' ? (sizeVal-1)/2 : (sizeVal*sizeVal-1)/2; 
+                    return distMatrix[a.id][Math.floor(cNode)] - distMatrix[b.id][Math.floor(cNode)];
+                });
+                preferences.push(prefs.map(p => p.id));
+            }
+
+            let maxDefeats = new Float32Array(TOTAL);
+            for(let i=0; i<TOTAL; i++) {
+                for(let j=i+1; j<TOTAL; j++) {
+                    let vA=0, vB=0;
+                    for(let k=0; k<TOTAL; k++) {
+                        let w = initialWeights[k];
+                        let dA = distMatrix[k][i], dB = distMatrix[k][j];
+                        if(dA < dB) vA += w; else if(dB < dA) vB += w; else { vA+=w/2; vB+=w/2; }
+                    }
+                    if(vB > maxDefeats[i]) maxDefeats[i] = vB;
+                    if(vA > maxDefeats[j]) maxDefeats[j] = vA;
+                }
+            }
+
+            let eliminationQueue = [];
+            for(let i=0; i<TOTAL; i++) eliminationQueue.push(i);
+            eliminationQueue.sort((a, b) => {
+                if (Math.abs(maxDefeats[b] - maxDefeats[a]) > 0.001) return maxDefeats[b] - maxDefeats[a];
+                if (geo === 'tree') return distMatrix[b][0] - distMatrix[a][0]; 
+                let cNode = geo === '1d' ? (sizeVal-1)/2 : (sizeVal*sizeVal-1)/2;
+                return distMatrix[b][Math.floor(cNode)] - distMatrix[a][Math.floor(cNode)];
+            });
+
+            let state = {
+                nodes: JSON.parse(JSON.stringify(nodes)),
+                activeCandidates: [...Array(TOTAL).keys()],
+                elected: [],
+                step: 0,
+                log: { msg: `Election Started. Method: ${transferMethod.toUpperCase()}`, type: "system" },
+                visualWeights: new Float32Array(initialWeights)
+            };
+            electionHistory = [JSON.parse(JSON.stringify(state))];
+
+            let keepFactors = new Float32Array(TOTAL).fill(1.0);
+            let standardVoterWeights = new Float32Array(initialWeights);
+
+            function getNextElimination() {
+                while(eliminationQueue.length > 0) {
+                    let c = eliminationQueue.shift();
+                    if (state.nodes[c].status === 'active') return c;
+                }
+                return -1;
+            }
+
+            while (state.elected.length < numSeats && state.activeCandidates.length > 0) {
+                state.step++;
+                
+                if (state.activeCandidates.length <= (numSeats - state.elected.length)) {
+                    while (state.activeCandidates.length > 0) {
+                        let n = state.activeCandidates.shift();
+                        state.nodes[n].status = 'elected'; state.elected.push(n);
+                        state.log = { msg: `★ Candidate ${n} ELECTED BY DEFAULT.`, type: 'elected' };
+                        electionHistory.push(JSON.parse(JSON.stringify(state)));
+                    }
+                    break;
+                }
+
+                if (transferMethod === 'meek') {
+                    let converged = false, iters = 0, newlyElected = false;
+                    while (!converged && iters < 100) {
+                        converged = true;
+                        let votes = new Float32Array(TOTAL), visWeights = new Float32Array(TOTAL);
+
+                        for (let i = 0; i < TOTAL; i++) {
+                            let w = initialWeights[i], activeWeight = 0;
+                            for (let c of preferences[i]) {
+                                if (keepFactors[c] > 0) {
+                                    let allocated = w * keepFactors[c];
+                                    votes[c] += allocated; w -= allocated;
+                                    if (state.nodes[c].status === 'active') activeWeight += allocated;
+                                }
+                                if (w < 0.0001) break;
+                            }
+                            visWeights[i] = activeWeight; 
+                        }
+
+                        for(let c of state.elected) {
+                            if (votes[c] > quota) {
+                                let newK = keepFactors[c] * quota / votes[c];
+                                if (Math.abs(newK - keepFactors[c]) > 0.0001) converged = false;
+                                keepFactors[c] = newK;
+                            }
+                        }
+
+                        for(let c of state.activeCandidates) {
+                            if (votes[c] >= quota) {
+                                state.nodes[c].status = 'elected'; state.elected.push(c);
+                                state.activeCandidates = state.activeCandidates.filter(id => id !== c);
+                                state.log = { msg: `★ Candidate ${c} ELECTED w/ ${votes[c].toFixed(3)} votes.`, type: 'elected' };
+                                newlyElected = true; converged = false;
+                                state.visualWeights = new Float32Array(visWeights);
+                                electionHistory.push(JSON.parse(JSON.stringify(state)));
+                            }
+                        }
+                        iters++;
+                    }
+
+                    if (!newlyElected) {
+                        let worstC = getNextElimination();
+                        if (worstC !== -1) {
+                            state.nodes[worstC].status = 'eliminated'; keepFactors[worstC] = 0.0;
+                            state.activeCandidates = state.activeCandidates.filter(id => id !== worstC);
+                            state.log = { msg: `Eliminated Candidate ${worstC}.`, type: 'eliminated' };
+                            
+                            let visWeights = new Float32Array(TOTAL);
+                            for (let i = 0; i < TOTAL; i++) {
+                                let w = initialWeights[i], activeWeight = 0;
+                                for (let c of preferences[i]) {
+                                    if (keepFactors[c] > 0) {
+                                        let alloc = w * keepFactors[c]; w -= alloc;
+                                        if (state.nodes[c].status === 'active') activeWeight += alloc;
+                                    }
+                                    if (w < 0.0001) break;
+                                }
+                                visWeights[i] = activeWeight; 
+                            }
+                            state.visualWeights = new Float32Array(visWeights);
+                            electionHistory.push(JSON.parse(JSON.stringify(state)));
+                        }
+                    }
+
+                } else {
+                    // Standard STV
+                    let firstVotes = new Float32Array(TOTAL), visWeights = new Float32Array(TOTAL);
+                    for(let i=0; i<TOTAL; i++) {
+                        let w = standardVoterWeights[i];
+                        if (w > 0.001) {
+                            let bestC = -1;
+                            for (let c of preferences[i]) { if (state.nodes[c].status === 'active') { bestC = c; break; } }
+                            if(bestC !== -1) { firstVotes[bestC] += w; visWeights[i] = w; }
+                        }
+                    }
+
+                    let bestC = -1, maxV = -1;
+                    for(let cid of state.activeCandidates) { if(firstVotes[cid] > maxV) { maxV = firstVotes[cid]; bestC = cid; } }
+
+                    if (maxV >= quota) {
+                        state.nodes[bestC].status = 'elected'; state.elected.push(bestC);
+                        state.activeCandidates = state.activeCandidates.filter(id => id !== bestC);
+                        
+                        let surplusFraction = (maxV - quota) / maxV;
+                        for (let i = 0; i < TOTAL; i++) {
+                            if (standardVoterWeights[i] > 0.001) {
+                                let topC = -1;
+                                for (let c of preferences[i]) { if (c === bestC || state.nodes[c].status === 'active') { topC = c; break; } }
+                                if (topC === bestC) { standardVoterWeights[i] *= surplusFraction; visWeights[i] *= surplusFraction; }
+                            }
+                        }
+                        state.log = { msg: `★ Candidate ${bestC} ELECTED w/ ${maxV.toFixed(3)} votes.`, type: 'elected' };
+                        state.visualWeights = new Float32Array(visWeights);
+                        electionHistory.push(JSON.parse(JSON.stringify(state)));
+                    } else {
+                        let worstC = getNextElimination();
+                        if (worstC !== -1) {
+                            state.nodes[worstC].status = 'eliminated';
+                            state.activeCandidates = state.activeCandidates.filter(id => id !== worstC);
+                            state.log = { msg: `Eliminated Candidate ${worstC}.`, type: 'eliminated' };
+                            state.visualWeights = new Float32Array(visWeights);
+                            electionHistory.push(JSON.parse(JSON.stringify(state)));
+                        }
+                    }
+                }
+            }
+            
+            let tl = document.getElementById('timeline');
+            tl.max = electionHistory.length - 1; tl.value = tl.max; tl.disabled = false;
+            scrubTime(); 
+        }
+
+        // --- VISUALIZATION ROUTER ---
+        function scrubTime() {
+            let step = parseInt(document.getElementById('timeline').value);
+            document.getElementById('round-display').innerText = `Round ${step}`;
+            let state = electionHistory[step];
+            document.getElementById('stat-seats').innerText = state.elected.length;
+
+            let logHtml = '';
+            for(let i = 0; i <= step; i++) logHtml += `<div class="log-entry ${electionHistory[i].log.type}">[R${i}] ${electionHistory[i].log.msg}</div>`;
+            let logBox = document.getElementById('log-output');
+            logBox.innerHTML = logHtml; logBox.scrollTop = logBox.scrollHeight;
+
+            const geo = document.getElementById('cfg-geometry').value;
+            if (geo === '1d') draw1D(state);
+            else if (geo === '2d') draw2D(state);
+            else drawTree(state);
+        }
+
+        function draw1D(state) {
+            const rect = document.getElementById('cvs-wrap').getBoundingClientRect();
+            // PIN DIMENSIONS STABLY TO PREVENT FLEX EXPANSION LOOP
+            canvas.width = Math.floor(rect.width - 30); 
+            canvas.height = 350; // Pin 1D height stably
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const N = state.nodes.length;
+            const startX = 40, endX = canvas.width - 40, spacing = (endX - startX) / (N - 1);
+            const lineY = canvas.height * 0.7; 
+
+            ctx.beginPath(); ctx.moveTo(startX, lineY); ctx.lineTo(endX, lineY);
+            ctx.strokeStyle = "#2c3e50"; ctx.lineWidth = 2; ctx.stroke();
+
+            ctx.textAlign = "center";
+            let tickFreq = N > 121 ? 20 : 10;
+
+            for(let i = 0; i < N; i++) {
+                let x = startX + i * spacing;
+                ctx.beginPath(); ctx.moveTo(x, lineY);
+                if(i % tickFreq === 0) {
+                    ctx.lineTo(x, lineY + 15); ctx.fillStyle = "#34495e"; ctx.font = "12px sans-serif"; ctx.fillText(i, x, lineY + 30);
+                } else ctx.lineTo(x, lineY + 5);
+                ctx.strokeStyle = "#bdc3c7"; ctx.lineWidth = 1; ctx.stroke();
+
+                let vw = state.visualWeights[i];
+                if (vw > 0.01) {
+                    let h = (vw / currentMaxWeight) * (canvas.height * 0.6);
+                    ctx.fillStyle = "rgba(52, 152, 219, 0.7)";
+                    ctx.fillRect(x - Math.max(1, spacing * 0.8)/2, lineY - h, Math.max(1, spacing * 0.8), h);
+                }
+
+                let c = state.nodes[i], cY = lineY + 45;
+                if (c.status === 'elected') {
+                    ctx.fillStyle = "#27ae60"; ctx.beginPath(); ctx.arc(x, cY, 8, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = "white"; ctx.font = "10px sans-serif"; ctx.fillText("★", x, cY + 3.5);
+                } else if (c.status === 'active') {
+                    ctx.fillStyle = "#95a5a6"; ctx.beginPath(); ctx.arc(x, cY, 3, 0, Math.PI*2); ctx.fill();
+                } else {
+                    ctx.fillStyle = "#e74c3c"; ctx.beginPath(); ctx.arc(x, cY, 1.5, 0, Math.PI*2); ctx.fill();
+                }
+            }
+        }
+
+        function draw2D(state) {
+            const rect = document.getElementById('cvs-wrap').getBoundingClientRect();
+            let size = Math.min(rect.width - 30, rect.height - 30, 500); // Max cap for comfort
+            canvas.width = size; canvas.height = size;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const padding = 20, usableWidth = size - padding * 2;
+            const gridSize = parseInt(document.getElementById('cfg-size').value);
+            const spacing = usableWidth / (gridSize - 1);
+
+            ctx.strokeStyle = "#ecf0f1"; ctx.lineWidth = 1;
+            for(let i = 0; i < gridSize; i++) {
+                let pos = padding + i * spacing;
+                ctx.beginPath(); ctx.moveTo(pos, padding); ctx.lineTo(pos, size - padding); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(padding, pos); ctx.lineTo(size - padding, pos); ctx.stroke();
+            }
+
+            const TOTAL = state.nodes.length;
+            for(let i = 0; i < TOTAL; i++) {
+                let n = state.nodes[i];
+                let cx = padding + n.x * spacing, cy = padding + n.y * spacing;
+                let vw = state.visualWeights[i];
+
+                if (vw > 0.01) {
+                    ctx.fillStyle = `rgba(52, 152, 219, ${(vw / currentMaxWeight) * 0.9})`;
+                    ctx.fillRect(cx - (spacing*0.95)/2, cy - (spacing*0.95)/2, spacing*0.95, spacing*0.95);
+                }
+
+                if (n.status === 'elected') {
+                    ctx.fillStyle = "#27ae60"; ctx.beginPath(); ctx.arc(cx, cy, Math.max(8, spacing*0.3), 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = "white"; ctx.font = `${Math.max(10, spacing*0.4)}px sans-serif`; ctx.textAlign = "center"; ctx.fillText("★", cx, cy + Math.max(3, spacing*0.15));
+                } else if (n.status === 'active') {
+                    ctx.fillStyle = "#34495e"; ctx.beginPath(); ctx.arc(cx, cy, Math.max(3, spacing*0.1), 0, Math.PI*2); ctx.fill();
+                } else {
+                    ctx.fillStyle = "#e74c3c"; ctx.beginPath(); ctx.arc(cx, cy, Math.max(1.5, spacing*0.05), 0, Math.PI*2); ctx.fill();
+                }
+            }
+        }
+
+        function drawTree(state) {
+            const rect = document.getElementById('cvs-wrap').getBoundingClientRect();
+            canvas.width = rect.width - 30; canvas.height = 400; // Stably pin tree height
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const TOTAL = state.nodes.length;
+            const levels = Math.floor(Math.log2(TOTAL)) + 1;
+            const paddingX = 20, paddingY = 20;
+            const usableW = canvas.width - paddingX * 2, usableH = canvas.height - paddingY * 2;
+            const spacingY = usableH / Math.max(1, (levels - 1));
+
+            let coords = [];
+            for (let i = 0; i < TOTAL; i++) {
+                let depth = state.nodes[i].depth;
+                let nodesInLvl = Math.pow(2, depth);
+                let offsetX = i - (nodesInLvl - 1);
+                coords.push({ x: paddingX + (offsetX + 0.5) * (usableW / nodesInLvl), y: paddingY + depth * spacingY });
+            }
+
+            ctx.strokeStyle = "#bdc3c7"; ctx.lineWidth = 1;
+            for (let i = 1; i < TOTAL; i++) {
+                let p = Math.floor((i - 1) / 2);
+                ctx.beginPath(); ctx.moveTo(coords[i].x, coords[i].y); ctx.lineTo(coords[p].x, coords[p].y); ctx.stroke();
+            }
+
+            for(let i = 0; i < TOTAL; i++) {
+                let cx = coords[i].x, cy = coords[i].y, vw = state.visualWeights[i];
+                if (vw > 0.05) {
+                    let size = 8 + (vw / currentMaxWeight) * 16; 
+                    ctx.fillStyle = `rgba(52, 152, 219, ${0.3 + (vw/currentMaxWeight)*0.6})`;
+                    ctx.fillRect(cx - size/2, cy - size/2, size, size);
+                }
+
+                let n = state.nodes[i];
+                if (n.status === 'elected') {
+                    ctx.fillStyle = "#27ae60"; ctx.beginPath(); ctx.arc(cx, cy, 10, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = "white"; ctx.font = "12px sans-serif"; ctx.textAlign = "center"; ctx.fillText("★", cx, cy + 4);
+                } else if (n.status === 'active') {
+                    ctx.fillStyle = "#34495e"; ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI*2); ctx.fill();
+                } else {
+                    ctx.fillStyle = "#e74c3c"; ctx.beginPath(); ctx.arc(cx, cy, 1.5, 0, Math.PI*2); ctx.fill();
+                }
+            }
+        }
+
+        window.addEventListener('resize', () => { if (electionHistory.length > 0) scrubTime(); });
+
+        // Kick off the initial load
+        onGeometryChange();
+    </script>
+</body>
+</html>
